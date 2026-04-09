@@ -123,7 +123,8 @@
                 
                 const json = await res.json();
                 console.log('🛒 Cart API response:', json);
-                const cartItems = json.data || [];
+                // batchResponse wraps items under data.items
+                const cartItems = (json.data && json.data.items) ? json.data.items : (Array.isArray(json.data) ? json.data : []);
 
                 console.log('🛒 Cart items loaded:', cartItems.length);
 

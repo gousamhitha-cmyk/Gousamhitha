@@ -102,8 +102,8 @@
                 const json = await res.json();
                 console.log('Cart API response:', json);
                 
-                // Handle different response structures
-                const cartItems = json.data?.items || json.data || json.cart || [];
+                // Handle different response structures - batchResponse returns data.items
+                const cartItems = (json.data && json.data.items) ? json.data.items : (Array.isArray(json.data) ? json.data : json.cart || []);
                 const totalCount = cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
                 
                 console.log(`Cart has ${cartItems.length} items, total quantity: ${totalCount}`);

@@ -73,6 +73,8 @@
                 
                 if (!user) {
                     console.log('No user logged in - cart count is 0');
+                    // Clear stale localStorage cart data
+                    localStorage.removeItem('cart');
                     return 0;
                 }
                 
@@ -81,6 +83,7 @@
                 
                 if (!token) {
                     console.log('No token found - cart count is 0');
+                    localStorage.removeItem('cart');
                     return 0;
                 }
                 

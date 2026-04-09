@@ -65,18 +65,23 @@
         const cartBadge = document.getElementById('bottom-nav-cart-count');
         if (!cartBadge) return;
         
-        // Try to get cart count from existing cart system
-        if (window.DataManager && typeof window.DataManager.getCartCount === 'function') {
-            window.DataManager.getCartCount().then(count => {
-                updateCartBadge(cartBadge, count);
-            }).catch(() => {
-                // Fallback: try to get from localStorage or other sources
-                updateCartBadgeFromStorage(cartBadge);
-            });
-        } else {
-            // Fallback: try to get from localStorage or other sources
-            updateCartBadgeFromStorage(cartBadge);
+        // Defer to CartCountUpdater if available (it uses the API)
+        if (window.CartCountUpdater && typeof window.CartCountUpdater.refresh === 'function') {
+            window.CartCountUpdater.refresh();
+            return;
         }
+        
+        // Fallback: only show count if user is logged in
+        const isLoggedIn = typeof window.isLoggedIn === 'function'
+            ? window.isLoggedIn()
+            : !!(localStorage.getItem('token') && localStorage.getItem('user'));
+        
+        if (!isLoggedIn) {
+            updateCartBadge(cartBadge, 0);
+            return;
+        }
+        
+        updateCartBadgeFromStorage(cartBadge);
     }
     
     function updateCartBadge(badge, count) {

@@ -124,6 +124,11 @@
         display: block;
     }
     
+    /* Hide top navbar profile icon on mobile - use bottom nav Profile tab instead */
+    .profile-icon-btn {
+        display: none !important;
+    }
+    
     /* Add bottom padding to body to prevent content overlap */
     body {
         padding-bottom: 70px;

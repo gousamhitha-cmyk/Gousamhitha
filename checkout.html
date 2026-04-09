@@ -327,6 +327,119 @@
 
         const API_BASE = window.API_BASE_URL || 'http://localhost:4000/api';
 
+        // ── Map selector functions ──────────────────────────────────────────
+        function openMapSelector() {
+            const modal = document.getElementById('map-modal');
+            if (!modal) return;
+            modal.classList.add('active');
+
+            setTimeout(() => {
+                if (!map) {
+                    // Default to India center
+                    map = L.map('map-container').setView([20.5937, 78.9629], 5);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
+
+                    marker = L.marker([20.5937, 78.9629], { draggable: true }).addTo(map);
+
+                    marker.on('dragend', function() {
+                        const pos = marker.getLatLng();
+                        selectedLat = pos.lat;
+                        selectedLng = pos.lng;
+                        reverseGeocode(pos.lat, pos.lng);
+                    });
+
+                    map.on('click', function(e) {
+                        marker.setLatLng(e.latlng);
+                        selectedLat = e.latlng.lat;
+                        selectedLng = e.latlng.lng;
+                        reverseGeocode(e.latlng.lat, e.latlng.lng);
+                    });
+
+                    // Try to use current location
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(pos => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            map.setView([lat, lng], 15);
+                            marker.setLatLng([lat, lng]);
+                            selectedLat = lat;
+                            selectedLng = lng;
+                            reverseGeocode(lat, lng);
+                        }, () => {});
+                    }
+                } else {
+                    map.invalidateSize();
+                }
+            }, 300);
+        }
+
+        function closeMapSelector() {
+            const modal = document.getElementById('map-modal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function reverseGeocode(lat, lng) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+                const data = await res.json();
+                const preview = document.getElementById('selected-address-preview');
+                if (preview && data.display_name) {
+                    preview.innerHTML = `<small>${data.display_name}</small>`;
+                    selectedDeliveryAddress = data.display_name;
+
+                    // Auto-fill pincode if found
+                    const pincode = data.address && (data.address.postcode || '');
+                    if (pincode && /^[0-9]{6}$/.test(pincode)) {
+                        document.getElementById('pincode').value = pincode;
+                    }
+                }
+            } catch (e) { /* silent fail */ }
+        }
+
+        function confirmLocation() {
+            if (!selectedLat || !selectedLng) {
+                alert('Please select a location on the map first');
+                return;
+            }
+            if (selectedDeliveryAddress) {
+                document.getElementById('address').value = selectedDeliveryAddress;
+            }
+            closeMapSelector();
+            // Trigger delivery charge update
+            const pincode = document.getElementById('pincode').value.trim();
+            if (pincode.length === 6) updateDeliveryCharge();
+        }
+
+        // Map search
+        document.addEventListener('DOMContentLoaded', function() {
+            const mapSearch = document.getElementById('map-search');
+            if (mapSearch) {
+                let searchTimeout;
+                mapSearch.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(async () => {
+                        const q = this.value.trim();
+                        if (q.length < 3 || !map) return;
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
+                            const results = await res.json();
+                            if (results.length) {
+                                const { lat, lon, display_name } = results[0];
+                                map.setView([lat, lon], 15);
+                                marker.setLatLng([lat, lon]);
+                                selectedLat = parseFloat(lat);
+                                selectedLng = parseFloat(lon);
+                                selectedDeliveryAddress = display_name;
+                                document.getElementById('selected-address-preview').innerHTML = `<small>${display_name}</small>`;
+                            }
+                        } catch (e) { /* silent */ }
+                    }, 600);
+                });
+            }
+        });
+
         // ── Load cart from backend API ──────────────────────────────────────
         async function loadCheckoutSummary() {
             const summaryDiv = document.getElementById('checkout-summary');

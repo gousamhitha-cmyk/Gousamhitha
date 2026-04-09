@@ -489,10 +489,10 @@ function openCheckoutPayment(orderData) {
         itemDiv.className = 'order-item';
         itemDiv.innerHTML = `
             <div class="order-item-info">
-                <div class="order-item-name">${item.name}</div>
-                <div class="order-item-details">Qty: ${item.quantity} × ₹${item.price.toFixed(2)}</div>
+                <div class="order-item-name">${item.product_name || item.name || 'Product'}</div>
+                <div class="order-item-details">Qty: ${item.quantity} × ₹${Number(item.price).toFixed(2)}</div>
             </div>
-            <div class="order-item-price">₹${(item.price * item.quantity).toFixed(2)}</div>
+            <div class="order-item-price">₹${(Number(item.price) * Number(item.quantity)).toFixed(2)}</div>
         `;
         orderItemsList.appendChild(itemDiv);
     });

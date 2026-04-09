@@ -645,69 +645,36 @@
             const userStr = localStorage.getItem('user');
             const user = userStr ? JSON.parse(userStr) : null;
 
-            const payload = {
-                user_id: orderData.user_id || (user && user.id),
-                customer_name: orderData.customerName || orderData.customer_name,
-                email: orderData.email || (user && user.email),
-                phone: orderData.phone,
-                address: orderData.address,
-                city: orderData.city,
-                pincode: orderData.pincode,
-                notes: orderData.notes,
-                subtotal: orderData.subtotal,
-                delivery_charge: orderData.delivery_charge || 0,
-                total: orderData.finalTotal || orderData.total,
-                payment_method: paymentMethod || 'COD',
-                items: (orderData.items || []).map(item => ({
-                    product_id: item.product_id,
-                    product_name: item.product_name || item.name,
-                    price: item.price,
-                    quantity: item.quantity
-                }))
+            // Normalize payment method to what backend expects
+            const methodMap = {
+                'Cash on Delivery': 'COD', 'cash on delivery': 'COD',
+                'cod': 'COD', 'COD': 'COD',
+                'UPI': 'UPI', 'upi': 'UPI',
+                'Card': 'Card', 'card': 'Card',
+                'NetBanking': 'NetBanking'
             };
+            const normalizedMethod = methodMap[paymentMethod] || 'COD';
 
-            return window.placeOrderViaAPI(payload, token);
-        };
-
-        // ── DOMContentLoaded ────────────────────────────────────────────────
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCheckoutSummary();
-
-            const pincodeInput = document.getElementById('pincode');
-            if (pincodeInput) {
-                pincodeInput.addEventListener('blur', updateDeliveryCharge);
-                pincodeInput.addEventListener('input', function() {
-                    if (this.value.length === 6) updateDeliveryCharge();
-                });
-            }
-        });
-    </script>
-
-</body>
-</html>
-
-        // ── Also expose saveOrderToDatabase as alias for payment.js ────────
-        window.saveOrderToDatabase = async function(orderData, paymentMethod, paymentStatus) {
-            const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-            const userStr = localStorage.getItem('user');
-            const user = userStr ? JSON.parse(userStr) : null;
+            // Normalize phone - strip non-digits, take last 10
+            const rawPhone = String(orderData.phone || '').replace(/\D/g, '');
+            const phone = rawPhone.length >= 10 ? rawPhone.slice(-10) : rawPhone;
 
             const payload = {
                 user_id: orderData.user_id || (user && user.id),
-                customer_name: orderData.customerName || orderData.customer_name,
+                customer_name: orderData.customerName || orderData.customer_name || 'Customer',
                 email: orderData.email || (user && user.email),
-                phone: orderData.phone,
+                phone: phone,
                 address: orderData.address,
                 city: orderData.city,
                 pincode: orderData.pincode,
-                notes: orderData.notes,
+                notes: orderData.notes || null,
                 subtotal: orderData.subtotal,
                 delivery_charge: orderData.delivery_charge || 0,
                 total: orderData.finalTotal || orderData.total,
-                payment_method: paymentMethod || 'COD',
+                payment_method: normalizedMethod,
                 items: (orderData.items || []).map(item => ({
                     product_id: item.product_id,
-                    product_name: item.product_name || item.name,
+                    product_name: item.product_name || item.name || 'Product',
                     price: item.price,
                     quantity: item.quantity
                 }))

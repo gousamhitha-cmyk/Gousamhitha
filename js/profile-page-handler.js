@@ -158,7 +158,7 @@ async function loadUserOrders(userId, token) {
         }
         
         const result = await response.json();
-        const orders = result.data?.orders || result.orders || result.data || [];
+        const orders = result.data?.items || result.data?.orders || result.orders || (Array.isArray(result.data) ? result.data : []);
         console.log('✅ Orders loaded:', orders.length);
         displayOrders(orders);
     } catch (error) {

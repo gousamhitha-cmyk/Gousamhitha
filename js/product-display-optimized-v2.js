@@ -184,18 +184,7 @@
             console.error('❌ Error parsing user data:', e);
         }
 
-        // Fallback: try Supabase session if still present
-        if (!user && window.supabase) {
-            try {
-                var r = await window.supabase.auth.getUser();
-                if (!r.error && r.data && r.data.user) {
-                    user = r.data.user;
-                    console.log('✅ Got user from Supabase session');
-                }
-            } catch (e) {
-                console.error('❌ Supabase getUser error:', e);
-            }
-        }
+
 
         console.log('👤 User check result:', user ? `Logged in as ${user.email}` : 'Not logged in');
 

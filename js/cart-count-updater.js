@@ -64,16 +64,7 @@
                     console.error('Error parsing user:', e);
                 }
                 
-                // Fallback: try Supabase auth if still present
-                if (!user && window.supabase) {
-                    try { 
-                        const r = await window.supabase.auth.getUser(); 
-                        if (!r.error && r.data?.user) user = r.data.user; 
-                    } catch(e){
-                        console.error('Supabase getUser error:', e);
-                    }
-                }
-                
+
                 if (!user) {
                     console.log('No user logged in - cart count is 0');
                     // Clear stale localStorage cart data

@@ -1,157 +1,154 @@
-// Profile Page - Supabase Version with Enhanced Error Handling
+// profile-supabase.js — REWRITTEN: API-only, no direct Supabase access
+// All auth and data fetching goes through the backend API (/api/...)
 
-// Wait for Supabase to be ready
-window.addEventListener('supabaseReady', function() {
-    console.log('✅ Supabase ready event received');
-    checkAndLoadProfile();
-});
+(function () {
+    'use strict';
 
-// Also try after a short delay
-setTimeout(checkAndLoadProfile, 1000);
+    const API = window.API_BASE_URL || 'http://localhost:4000/api';
 
-// Fallback check after longer delay
-setTimeout(() => {
-    if (!window.supabase) {
-        console.error('❌ Supabase failed to load after 3 seconds');
-        document.getElementById('loading').innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: #d32f2f;">
-                <h3>Connection Error</h3>
-                <p>Unable to connect to the server. Please:</p>
-                <ul style="text-align: left; display: inline-block; margin: 1rem 0;">
-                    <li>Check your internet connection</li>
-                    <li>Refresh the page</li>
-                    <li>Try again in a few moments</li>
-                </ul>
-                <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #4a7c59; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Refresh Page
-                </button>
-                <br><br>
-                <a href="index.html" style="color: #4a7c59;">← Go back to Home</a>
-            </div>
-        `;
-    }
-}, 3000);
-
-async function checkAndLoadProfile() {
-    if (!window.supabase) {
-        console.log('⏳ Waiting for Supabase...');
-        setTimeout(checkAndLoadProfile, 500);
-        return;
+    function getToken() {
+        return localStorage.getItem('token') || localStorage.getItem('auth_token') || '';
     }
 
-    console.log('🔍 Checking authentication...');
-    
-    try {
-        const { data: { user }, error } = await window.supabase.auth.getUser();
-        
-        if (error) {
-            console.error('❌ Auth error:', error);
-            document.getElementById('loading').innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #d32f2f;">
-                    <h3>Session Expired</h3>
-                    <p>Your session has expired. Please log in again.</p>
-                    <a href="index.html" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #4a7c59; color: white; text-decoration: none; border-radius: 5px;">
-                        Go to Home
-                    </a>
-                </div>
-            `;
-            return;
+    function getUser() {
+        try {
+            const raw = localStorage.getItem('user') || localStorage.getItem('auth_user');
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
         }
-        
-        console.log('👤 User:', user ? 'Authenticated' : 'Not authenticated');
-        
-        if (user) {
-            loadProfile(user);
-        } else {
-            console.log('🔄 Not authenticated, showing login prompt...');
-            document.getElementById('loading').innerHTML = `
+    }
+
+    function showError(elementId, html) {
+        const el = document.getElementById(elementId);
+        if (el) el.innerHTML = html;
+    }
+
+    async function checkAndLoadProfile() {
+        const user = getUser();
+        const token = getToken();
+
+        if (!user || !token) {
+            showError('loading', `
                 <div style="text-align: center; padding: 2rem; color: #666;">
                     <h3>Not Logged In</h3>
                     <p>Please log in to view your profile.</p>
-                    <a href="index.html" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #4a7c59; color: white; text-decoration: none; border-radius: 5px;">
-                        Go to Home & Login
+                    <a href="index.html" style="display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#4a7c59;color:white;text-decoration:none;border-radius:5px;">
+                        Go to Home &amp; Login
                     </a>
                 </div>
-            `;
+            `);
+            return;
         }
-    } catch (error) {
-        console.error('❌ Error checking auth:', error);
-        document.getElementById('loading').innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: #d32f2f;">
-                <h3>Error Loading Profile</h3>
-                <p>There was an error loading your profile. Please try again.</p>
-                <button onclick="checkAndLoadProfile()" style="padding: 0.5rem 1rem; background: #4a7c59; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 0.5rem;">
-                    Try Again
-                </button>
-                <a href="index.html" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #666; color: white; text-decoration: none; border-radius: 5px;">
-                    Go to Home
-                </a>
-            </div>
-        `;
+
+        await loadProfile(user, token);
     }
-}
 
-async function loadProfile(user) {
-    const loading = document.getElementById('loading');
-    const content = document.getElementById('profile-content');
-    const API = window.API_BASE_URL || 'http://localhost:4000/api';
-    const token = localStorage.getItem('auth_token') || '';
+    async function loadProfile(user, token) {
+        const loading = document.getElementById('loading');
+        const content = document.getElementById('profile-content');
 
-    try {
-        // Fetch user profile via backend API
-        const res = await fetch(`${API}/users/${user.id}`, { headers: { 'Authorization': 'Bearer ' + token } });
-        const json = await res.json();
-        const userData = json.user || {};
-
-        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-        const displayName = fullName || user.email?.split('@')[0] || 'User';
-        const initial = displayName.charAt(0).toUpperCase();
-
-        document.getElementById('profile-avatar').textContent = initial;
-        document.getElementById('profile-name').textContent = displayName;
-        document.getElementById('profile-email').textContent = user.email || 'No email';
-        document.getElementById('field-name').textContent = fullName || '-';
-        document.getElementById('field-email').textContent = user.email || '-';
-        document.getElementById('field-phone').textContent = userData.phone || '-';
-        document.getElementById('field-address').textContent = userData.address || '-';
-        document.getElementById('field-joined').textContent = user.created_at
-            ? new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '-';
-
-        // Fetch orders count via API
         try {
-            const oRes = await fetch(`${API}/orders/user/${user.id}`, { headers: { 'Authorization': 'Bearer ' + token } });
-            const oJson = await oRes.json();
-            document.getElementById('field-orders').textContent = (oJson.orders || []).length;
-        } catch (e) { document.getElementById('field-orders').textContent = '0'; }
+            const res = await fetch(`${API}/users/${user.id}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
 
-        // Fetch cart count via API
-        try {
-            const cRes = await fetch(`${API}/cart/${user.id}`, { headers: { 'Authorization': 'Bearer ' + token } });
-            const cJson = await cRes.json();
-            const cartCount = (cJson.cart || []).reduce((s, i) => s + (i.quantity || 0), 0);
-            document.getElementById('field-cart').textContent = cartCount;
-        } catch (e) { document.getElementById('field-cart').textContent = '0'; }
+            if (res.status === 401) {
+                showError('loading', `
+                    <div style="text-align:center;padding:2rem;color:#d32f2f;">
+                        <h3>Session Expired</h3>
+                        <p>Your session has expired. Please log in again.</p>
+                        <a href="index.html" style="display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#4a7c59;color:white;text-decoration:none;border-radius:5px;">
+                            Go to Home
+                        </a>
+                    </div>
+                `);
+                return;
+            }
 
-        loading.style.display = 'none';
-        content.style.display = 'block';
-        console.log('✅ Profile loaded via API');
+            const json = await res.json();
+            const userData = json.user || {};
 
-    } catch (error) {
-        console.error('❌ Error loading profile:', error);
-        loading.innerHTML = '<div style="text-align:center;padding:2rem;color:#d32f2f;"><h3>Profile Loading Error</h3><p>Unable to load your profile data.</p><a href="index.html" style="display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#666;color:white;text-decoration:none;border-radius:5px;">Go to Home</a></div>';
+            const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+            const displayName = fullName || user.email?.split('@')[0] || 'User';
+            const initial = displayName.charAt(0).toUpperCase();
+
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+            set('profile-avatar', initial);
+            set('profile-name', displayName);
+            set('profile-email', user.email || 'No email');
+            set('field-name', fullName || '-');
+            set('field-email', user.email || '-');
+            set('field-phone', userData.phone || '-');
+            set('field-address', userData.address || '-');
+            set('field-joined', user.created_at
+                ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                : '-');
+
+            // Orders count
+            try {
+                const oRes = await fetch(`${API}/orders/user/${user.id}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                const oJson = await oRes.json();
+                set('field-orders', (oJson.orders || []).length);
+            } catch (e) { set('field-orders', '0'); }
+
+            // Cart count
+            try {
+                const cRes = await fetch(`${API}/cart/${user.id}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                const cJson = await cRes.json();
+                const cartCount = (cJson.cart || cJson.data || []).reduce((s, i) => s + (i.quantity || 0), 0);
+                set('field-cart', cartCount);
+            } catch (e) { set('field-cart', '0'); }
+
+            if (loading) loading.style.display = 'none';
+            if (content) content.style.display = 'block';
+
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            showError('loading', `
+                <div style="text-align:center;padding:2rem;color:#d32f2f;">
+                    <h3>Profile Loading Error</h3>
+                    <p>Unable to load your profile data.</p>
+                    <button onclick="window.checkAndLoadProfile()" style="padding:.5rem 1rem;background:#4a7c59;color:white;border:none;border-radius:5px;cursor:pointer;margin:.5rem;">
+                        Try Again
+                    </button>
+                    <a href="index.html" style="display:inline-block;margin-top:1rem;padding:.5rem 1rem;background:#666;color:white;text-decoration:none;border-radius:5px;">
+                        Go to Home
+                    </a>
+                </div>
+            `);
+        }
     }
-}
 
-async function logoutUser() {
-    if (confirm('Are you sure you want to logout?')) {
-        try {
-            if (window.AuthAPI) await window.AuthAPI.signout();
-            else if (window.supabase) await window.supabase.auth.signOut();
+    async function logoutUser() {
+        if (confirm('Are you sure you want to logout?')) {
+            try {
+                const token = getToken();
+                if (token) {
+                    await fetch(`${API}/auth/signout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    }).catch(() => {});
+                }
+                localStorage.removeItem('token');
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('auth_user');
+            } catch (e) { /* ignore */ }
             window.location.href = 'index.html';
-        } catch (e) { window.location.href = 'index.html'; }
+        }
     }
-}
 
-// Make functions globally available for debugging
-window.checkAndLoadProfile = checkAndLoadProfile;
-window.loadProfile = loadProfile;
+    // Expose globally
+    window.checkAndLoadProfile = checkAndLoadProfile;
+    window.loadProfile = loadProfile;
+    window.logoutUser = logoutUser;
+
+    // Init on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkAndLoadProfile);
+    } else {
+        checkAndLoadProfile();
+    }
+})();

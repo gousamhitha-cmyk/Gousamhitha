@@ -2,14 +2,14 @@ const supabase = require('../config/supabase');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { successResponse, createdResponse, batchResponse } = require('../utils/response');
 
-// GET /api/delivery/zones — public, list all active zones
+// GET /api/delivery/zones — list zones (admin sees all, public sees active only)
 const getDeliveryZones = asyncHandler(async (req, res) => {
-    const { data, error } = await supabase
-        .from('delivery_zones')
-        .select('*')
-        .eq('is_active', true)
-        .order('zone_name');
+    const isAdmin = req.query.all === 'true';
 
+    let query = supabase.from('delivery_zones').select('*').order('zone_name');
+    if (!isAdmin) query = query.eq('is_active', true);
+
+    const { data, error } = await query;
     if (error) throw new AppError('Failed to fetch delivery zones', 500);
     return batchResponse(res, 200, data || [], (data || []).length, 'Delivery zones retrieved');
 });

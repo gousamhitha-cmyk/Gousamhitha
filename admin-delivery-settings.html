@@ -321,7 +321,7 @@
             if (!token) { window.location.href = 'index.html'; return; }
 
             try {
-                const res = await fetch(`${API_BASE}/delivery/zones`, {
+                const res = await fetch(`${API_BASE}/delivery/zones?all=true`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const json = await res.json();

@@ -8,7 +8,7 @@
     window.API_BASE_URL = 
         window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
             ? "http://localhost:4000/api"
-            : "https://gousamhitha-production.onrender.com/api";
+            : "https://gousamhitha-1-g42x.onrender.com/api";
     
     console.log('⚙️ API Config loaded:', window.API_BASE_URL);
     
